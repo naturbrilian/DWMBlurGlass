@@ -32,12 +32,12 @@
 	<extendborder>Perluas efek ke borders (win10)</extendborder>
 	<reflection>Aktifkan efek pantulan Aero (Win10)</reflection>
 	<oldBtnHeight>Kurangi tinggi tombol pada baris judul (win7 style)</oldBtnHeight>
-	<blendcolor>Warna blend baris judul (Aktif):</blendcolor>
-	<inactiveblendcolor>Warna blend baris judul (Tidak Aktif):</inactiveblendcolor>
+	<blendcolor>Warna campuran baris judul (Aktif):</blendcolor>
+	<inactiveblendcolor>Warna campuran pada baris judul (Tidak Aktif):</inactiveblendcolor>
 	<activecolor>Warna teks aktif:</activecolor>
 	<inactivecolor>Warna teks ketika dinonaktifkan:</inactivecolor>
 	<preview>Pratinjau</preview>
-	<sampletitle>Contoh window judul (Aktif)</sampletitle>
+	<sampletitle>Contoh jendela judul (Aktif)</sampletitle>
 	<configfile>Berkas konfigurasi</configfile>
 	<symbolfile>Berkas simbol:</symbolfile>
 	<download>Unduh</download>
