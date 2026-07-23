@@ -18,13 +18,13 @@
 #include "framework.h"
 #include "UIManager.h"
 #include "MainWindow.h"
-#include "MDcompRender.h"
 #include "Helper/Helper.h"
 #include "MHostHelper.h"
-#include <User/Mui_Engine.h>
 #include "Extend/ColorDisplay.h"
 #include <Knownfolders.h>
 #include <Shlobj.h>
+#include <minidumpapiset.h>
+#include "Helper/wil.h"
 
 using namespace Mui;
 
@@ -40,8 +40,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		return 0;
 #endif
 
+	auto [locale, parentLocale] = MDWMBlurGlass::GetSystemLocaleAndParent();
+
 	if (!MDWMBlurGlass::LoadLanguageFileList() 
-		|| (!MDWMBlurGlass::LoadBaseLanguageString(MDWMBlurGlass::GetSystemLocalName())
+		|| (!MDWMBlurGlass::LoadBaseLanguageString(locale) && !MDWMBlurGlass::LoadBaseLanguageString(parentLocale)
 		&& !MDWMBlurGlass::LoadBaseLanguageString(L"en-US")))
 	{
 		MessageBoxW(nullptr, L"初始化失败: 没有有效的语言文件 (Initialization failed: No valid language file).", L"error", MB_ICONERROR);
@@ -58,16 +60,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		{
 			MessageBoxW(nullptr,
 				Helper::M_ReplaceString(MDWMBlurGlass::GetBaseLanguageString(L"initfail0"), L"{path}", curpath).c_str(),
-				L"waring", MB_ICONWARNING | MB_TOPMOST);
+				L"Warning", MB_ICONWARNING | MB_TOPMOST);
 			return false;
 		}
 	}
 
-	if(lpCmdLine && _wcsicmp(lpCmdLine, L"loaddll") == 0)
+	if(lpCmdLine && _wcsicmp(lpCmdLine, L"runhost") == 0)
 	{
-		std::wstring err;
-		if (!MDWMBlurGlass::LoadDWMExtensionBase(err))
-			MessageBoxW(nullptr, err.c_str(), L"DWMBlurGlass Error", MB_ICONERROR);
+		HANDLE hObject = CreateMutexW(nullptr, FALSE, L"_DWMBlurGlass_host_");
+		if (GetLastError() == ERROR_ALREADY_EXISTS)
+		{
+			CloseHandle(hObject);
+			return 0;
+		}
+		if (hObject)
+			ReleaseMutex(hObject);
+
+		MDWMBlurGlass::MHostStartProcess();
+
 		return 0;
 	}
 
@@ -83,49 +93,41 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	//初始化界面库 全局仅有一个MiaoUI类
 	MiaoUI engine;
 	std::wstring err;
-	auto render = new MDWMBlurGlass::MRender_DComp();
-
-	if (!Render::InitDirect2D(err, -1) || !engine.InitEngine(err, MiaoUI::Render::Custom, _m_ptrv(render)))
+	if (!engine.InitEngine(err, MiaoUI::Render::Gdiplus))
 	{
 		MessageBoxW(nullptr, (MDWMBlurGlass::GetBaseLanguageString(L"inituifail0") + err).c_str(), L"error", MB_ICONERROR);
-		delete render;
 		return 0;
 	}
 
-	auto context = engine.CreateWindowCtx({ 0,0,500,648 }, MWindowType::Normal,
-		L"DWMBlurGlass " + MDWMBlurGlass::g_vernum, true, true, 0, WS_EX_NOREDIRECTIONBITMAP);
+	auto context = engine.CreateWindowCtx({ 0,0,500,730 }, MiaoUI::MWindowType::NoTitleBar,
+		L"DWMBlurGlass " + MDWMBlurGlass::g_vernum, true, true, 0);
 	if(!context)
 	{
 		MessageBoxW(nullptr, MDWMBlurGlass::GetBaseLanguageString(L"inituifail1").c_str(), L"error", MB_ICONERROR);
-		delete render;
 		return 0;
 	}
 
 	ColorDisplay::Register();
 
 	context->SetEventCallback(MDWMBlurGlass::MainWindow_EventProc);
+	context->SetEventSourceCallback(MDWMBlurGlass::MainWindow_SrcEventProc);
 	if(!context->InitWindow(MDWMBlurGlass::MainWindow_InitWindow, false))
 	{
 		delete context;
-		delete render;
 		MessageBoxW(nullptr, MDWMBlurGlass::GetBaseLanguageString(L"inituifail2").c_str(), L"error", MB_ICONERROR);
 		return 0;
 	}
 
 	MDWMBlurGlass::ClearBaseLanguage();
 
-	render->InitBackdrop();
-
-	context->Base()->SetResMode(true);
+	//context->Base()->ShowDebugRect(true);
 	context->Base()->CenterWindow();
 	context->Base()->ShowWindow(true);
+
 
 	context->EventLoop();
 
 	MDWMBlurGlass::MainWindow_Destroy();
-
-	Render::UninitDirect2D();
-
 	engine.UnInitEngine();
 
 	return 0;

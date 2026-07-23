@@ -25,14 +25,13 @@ namespace Mui
 	class ColorDisplay : public UIControl
 	{
 	public:
-		M_DEF_CTRL(L"ColorDisplay")
-		{
+		MCTRL_DEFINE
+		(
+			L"ColorDisplay",
 			{ CtrlMgr::AttribType::labelStyle, L"fontStyle" }
-		}
-		M_DEF_CTRL_END
+		);
 
 		ColorDisplay(UIControl* parent);
-		~ColorDisplay() override;
 
 		void SetAttribute(std::wstring_view attribName, std::wstring_view attrib, bool draw = true) override;
 
@@ -50,9 +49,9 @@ namespace Mui
 		_m_color hoverColor = 0;
 		_m_color pressColor = 0;
 		_m_color normalColor = 0;
-		MFont* font = nullptr;
-		MBrush* brush = nullptr;
-		MPen* pen = nullptr;
+		MFontPtr font = nullptr;
+		MBrushPtr brush = nullptr;
+		MPenPtr pen = nullptr;
 		bool mousedown = false;
 		bool showalpha = false;
 

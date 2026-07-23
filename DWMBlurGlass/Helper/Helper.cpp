@@ -87,49 +87,20 @@ namespace MDWMBlurGlass
 		return str;
 	}
 
-	std::wstring GetSystemLocalName()
+	std::pair<std::wstring, std::wstring> GetSystemLocaleAndParent()
 	{
 		WCHAR langName[LOCALE_NAME_MAX_LENGTH];
-		if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, langName, LOCALE_NAME_MAX_LENGTH)) 
+		if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, langName, LOCALE_NAME_MAX_LENGTH))
 		{
-			return langName;
+			std::wstring locale = langName;
+			auto pos = locale.find(L'-');
+			if (pos != std::wstring::npos)
+			{
+				return { locale, std::wstring(locale.substr(0, pos)) };
+			}
+			return { locale, locale };
 		}
-		return L"en-US";
-	}
-
-	BOOL EnableHostBackdropBrush(HWND hWnd)
-	{
-		struct WINDOWCOMPOSITIONATTRIBUTEDATA
-		{
-			DWORD dwAttribute;
-			PVOID pvData;
-			SIZE_T cbData;
-		};
-		struct ACCENT_POLICY
-		{
-			DWORD AccentState;
-			DWORD AccentFlags;
-			DWORD dwGradientColor;
-			DWORD dwAnimationId;
-		};
-
-		ACCENT_POLICY policy = {};
-
-		if (os::buildNumber < 17763)
-			policy.AccentState = 3;
-		else
-			policy.AccentState = 5;
-
-		WINDOWCOMPOSITIONATTRIBUTEDATA data =
-		{
-			19,
-			&policy,
-			sizeof(policy)
-		};
-		static auto SetWindowCompositionAttribute = reinterpret_cast<BOOL(WINAPI*)(HWND, WINDOWCOMPOSITIONATTRIBUTEDATA*)>(
-			GetProcAddress(GetModuleHandleW(L"user32.dll"), "SetWindowCompositionAttribute"));
-
-		return SetWindowCompositionAttribute(hWnd, &data);
+		return { L"en-US", L"en" };
 	}
 
 	std::wstring hrToStr(HRESULT hr)
@@ -241,7 +212,7 @@ namespace MDWMBlurGlass
 		
 		//设置程序路径和参数
 		pExecAction->put_Path((BSTR)(Utils::GetCurrentDir() + L"\\DWMBlurGlass.exe").c_str());
-		pExecAction->put_Arguments((BSTR)L"loaddll");
+		pExecAction->put_Arguments((BSTR)L"runhost");
 		
 		//设置触发器信息，包括用户登录时触发
 		com_ptr<ITriggerCollection> triggercoll = nullptr;
@@ -327,11 +298,6 @@ namespace MDWMBlurGlass
 
 		hr = rootFolder->DeleteTask((BSTR)g_extTaskName, 0);
 		return SUCCEEDED(hr);
-	}
-
-	bool SetIniString(std::wstring_view path, std::wstring_view appName, std::wstring_view keyName, std::wstring_view value)
-	{
-		return WritePrivateProfileStringW(appName.data(), keyName.data(), value.data(), path.data());
 	}
 
 	bool BrowseForFile(bool isOpen, bool multiple, const std::vector<COMDLG_FILTERSPEC>& filter, HWND parentWnd, std::vector<std::wstring>& selectedFiles, std::wstring_view defExtName)
@@ -476,6 +442,8 @@ namespace MDWMBlurGlass
 		{
 			if (_wcsicmp(pe.szExeFile, name.data()) == 0)
 			{
+				if (name == L"dwmblurglass.exe" && pe.th32ProcessID == GetCurrentProcessId())
+					continue;
 				return pe.th32ProcessID;
 			}
 		}

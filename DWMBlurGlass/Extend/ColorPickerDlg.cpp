@@ -19,9 +19,9 @@
 
 namespace MDWMBlurGlass
 {
-	ColorPickerDlg::ColorPickerDlg(UIControl* parent, XML::MuiXML* ui) : Dialog(parent, ui)
+	ColorPickerDlg::ColorPickerDlg(UIControl* parent, XML::MuiXML* ui) : Page(parent, ui)
 	{
-		std::wstring_view geometry = LR"(
+		std::wstring_view geometry = MXMLCODE(
 		<part>
 			<fill_rect rc="0,0,0,0" color="220,220,220,255" />
 		</part>
@@ -34,11 +34,11 @@ namespace MDWMBlurGlass
 		<part>
 			<fill_rect rc="0,0,0,0" color="220,220,220,255" />
 		</part>
-		)";
+		);
 		ui->Mgr()->AddGeometryStyle(L"colorpickerbtn", geometry);
 
-		std::wstring_view xml = LR"(
-		<PropGroup id="colorpicker_edit" limitText="3" number="true" inset="3,1,1,1" />
+		std::wstring_view xml = MXMLCODE(
+		<PropGroup id="colorpicker_edit" limitText="3" number="true" inset="3,1,1,1" wordAutoSel="true" />
 
 		<UIControl name="colorpicker" bgColor="80,80,80,60" size="100%,100%" autoSize="false" align="Center" visible="false">
 			<UIControl bgColor="255,255,255,255" frameWidth="1" frameColor="222,222,222,255" frameRound="10" name="content"
@@ -79,19 +79,20 @@ namespace MDWMBlurGlass
 						<UIControl frameWidth="1" frameColor="150,150,150,255" name="colorpicker_cur" frame="10,5,50,50" />
 					</UIControl>
 				</UIControl>
-				<UIControl frame="280,300,100%,100%" align="LinearHLB">
-					<UIButton frame="10,10,72,27" text="#msgdlg_no" name="color_dialog_no" animate="false" />
-					<UIButton frame="10,10,72,27" text="#msgdlg_yes" name="color_dialog_yes" animate="false" />
+				<UIControl frame="200,300,100%,100%" align="LinearHLB">
+					<UIButton pos="10,10" text="#msgdlg_no" name="color_dialog_no" animate="false" autoSize="true" minSize="72,27" maxSize="100,26" inset="5,2,5,2" />
+					<UIButton pos="10,10" text="#msgdlg_yes" name="color_dialog_yes" animate="false" autoSize="true" minSize="72,27" maxSize="100,26" inset="5,2,5,2" />
 				</UIControl>
-				<UILabel fontSize="12" text="HEX: #000000" pos="15,305" name="colorpicker_hex" />
+				<UILabel fontSize="12" text="HEX: #" pos="15,305" />
+				<UIEditBox frame="55,302,75,20" limitText="8" inset="3,1,1,1" wordAutoSel="true" text="0" name="colorpicker_hex" />
 				<UIControl frame="150,305,100%,20" align="LinearH" name="colorpicker_ablock">
 					<UILabel text="#colorpicker_dlg_alpha" />
-					<UISlider frame="5,0,165,16" value="255" maxValue="255" name="colorpicker_alpha" />
+					<UISlider frame="5,0,165,18" value="255" maxValue="255" name="colorpicker_alpha" />
 					<UILabel autoSize="false" frame="5,0,100,20" text="100%" name="colorpicker_aper" />
 				</UIControl>
 			</UIControl>
 		</UIControl>
-		)";
+		);
 
 		if (!ui->CreateUIFromXML(parent, xml.data()))
 		{
@@ -99,11 +100,10 @@ namespace MDWMBlurGlass
 		}
 
 		m_page = parent->Child(L"colorpicker");
-		m_content = m_page->Child(L"content");
-		m_colorpicker = m_content->Child<UIColorPicker>(L"colorpicker_color");
-		m_alphaper = m_content->Child<UILabel>(L"colorpicker_aper");
-		m_alphav = m_content->Child<UISlider>(L"colorpicker_alpha");
-		m_content->Child(L"colorpicker_hbar")->SetCacheType(UICacheType::Disable);
+		m_colorpicker = m_page->Child<UIColorPicker>(L"colorpicker_color");
+		m_alphaper = m_page->Child<UILabel>(L"colorpicker_aper");
+		m_alphav = m_page->Child<UISlider>(L"colorpicker_alpha");
+		m_page->Child(L"colorpicker_hbar")->SetCacheType(UICacheType::Disable);
 	}
 
 	//更新颜色和文本显示
@@ -119,38 +119,27 @@ namespace MDWMBlurGlass
 			using namespace Color;
 			bgColor.bkgndColor = M_RGBA(M_GetRValue(color), M_GetGValue(color), M_GetBValue(color), alpha);
 		}
-		m_content->Child<UIControl>(L"colorpicker_new")->SetBackground(bgColor);
-		wchar_t buff[9];
-		if (m_alpha)
-		{
-			swprintf_s(buff, 9, L"%02X%02X%02X%02X", Color::M_GetRValue(color),
-				Color::M_GetGValue(color), Color::M_GetBValue(color), alpha);
-		}
-		else
-		{
-			swprintf_s(buff, 7, L"%02X%02X%02X", Color::M_GetRValue(color),
-				Color::M_GetGValue(color), Color::M_GetBValue(color));
-		}
-		std::wstring hexstr = L"HEX: #";
-		hexstr += buff;
-		m_content->Child<UILabel>(L"colorpicker_hex")->SetAttribute(L"text", hexstr);
+		m_page->Child<UIControl>(L"colorpicker_new")->SetBackground(bgColor);
+		auto hex = _m_color(bgColor.bkgndColor).HEX(true, m_alpha);
+		std::ranges::transform(hex, hex.begin(), ::toupper);
+		m_page->Child<UIEditBox>(L"colorpicker_hex")->SetCurText(hex);
 	}
 
 	//更新RGB值显示
 	void ColorPickerDlg::updateRGB(_m_color color)
 	{
-		m_content->Child<UIEditBox>(L"colorpicker_r")->SetCurText(std::to_wstring(Color::M_GetRValue(color)));
-		m_content->Child<UIEditBox>(L"colorpicker_g")->SetCurText(std::to_wstring(Color::M_GetGValue(color)));
-		m_content->Child<UIEditBox>(L"colorpicker_b")->SetCurText(std::to_wstring(Color::M_GetBValue(color)));
+		m_page->Child<UIEditBox>(L"colorpicker_r")->SetCurText(std::to_wstring(Color::M_GetRValue(color)));
+		m_page->Child<UIEditBox>(L"colorpicker_g")->SetCurText(std::to_wstring(Color::M_GetGValue(color)));
+		m_page->Child<UIEditBox>(L"colorpicker_b")->SetCurText(std::to_wstring(Color::M_GetBValue(color)));
 	}
 
 	//更新HSV值显示
 	void ColorPickerDlg::updateHSV(UIColorPicker::HSV&& hsv)
 	{
-		m_content->Child<UIEditBox>(L"colorpicker_h")->SetCurText(std::to_wstring(hsv.hue));
-		m_content->Child<UIEditBox>(L"colorpicker_s")->SetCurText(std::to_wstring(hsv.sat));
-		m_content->Child<UIEditBox>(L"colorpicker_v")->SetCurText(std::to_wstring(hsv.val));
-		m_content->Child<UISlider>(L"colorpicker_hbar")->SetCurValue(hsv.hue);
+		m_page->Child<UIEditBox>(L"colorpicker_h")->SetCurText(std::to_wstring(hsv.hue));
+		m_page->Child<UIEditBox>(L"colorpicker_s")->SetCurText(std::to_wstring(hsv.sat));
+		m_page->Child<UIEditBox>(L"colorpicker_v")->SetCurText(std::to_wstring(hsv.val));
+		m_page->Child<UISlider>(L"colorpicker_hbar")->SetCurValue(hsv.hue);
 	}
 
 	void ColorPickerDlg::updateAlpha(int value)
@@ -163,9 +152,9 @@ namespace MDWMBlurGlass
 	//RGB颜色已更改
 	void ColorPickerDlg::changeRGB()
 	{
-		auto R = _wtoi(m_content->Child<UIEditBox>(L"colorpicker_r")->GetCurText().c_str());
-		auto G = _wtoi(m_content->Child<UIEditBox>(L"colorpicker_g")->GetCurText().c_str());
-		auto B = _wtoi(m_content->Child<UIEditBox>(L"colorpicker_b")->GetCurText().c_str());
+		auto R = _wtoi(m_page->Child<UIEditBox>(L"colorpicker_r")->GetCurText().c_str());
+		auto G = _wtoi(m_page->Child<UIEditBox>(L"colorpicker_g")->GetCurText().c_str());
+		auto B = _wtoi(m_page->Child<UIEditBox>(L"colorpicker_b")->GetCurText().c_str());
 		m_colorpicker->SetRGBAColor(Color::M_RGBA((_m_byte)R, (_m_byte)G, (_m_byte)B, 255));
 	}
 
@@ -199,7 +188,7 @@ namespace MDWMBlurGlass
 				m_colorpicker->SetHSVColor(hsv);
 				updateRGB(m_colorpicker->GetRGBAColor());
 				updateDisplay(m_colorpicker->GetRGBAColor());
-				m_content->Child<UIEditBox>(L"colorpicker_h")->SetCurText(std::to_wstring(hsv.hue));
+				m_page->Child<UIEditBox>(L"colorpicker_h")->SetCurText(std::to_wstring(hsv.hue));
 			}
 			else if (_MNAME(L"colorpicker_alpha"))
 			{
@@ -209,7 +198,7 @@ namespace MDWMBlurGlass
 				ret = false;
 		}
 		break;
-		case Event_Edit_TextChanged:
+		case Event_Focus_False:
 		{
 			//防止文本越界
 			auto textFormat = [](UIEditBox* edit, int max)
@@ -222,6 +211,18 @@ namespace MDWMBlurGlass
 					edit->SetCurText(std::to_wstring(max));
 				else if (value < 0)
 					edit->SetCurText(L"0");
+			};
+			auto hexFormat = [](std::wstring_view input)
+			{
+				std::wstring result;
+				for (const wchar_t ch : input) 
+				{
+					if ((ch >= L'0' && ch <= L'9') || (ch >= L'A' && ch <= L'F')) 
+						result += ch;
+					else
+						result += L'F';
+				}
+				return result;
 			};
 			if (_MNAME(L"colorpicker_r")
 				|| _MNAME(L"colorpicker_g")
@@ -240,8 +241,8 @@ namespace MDWMBlurGlass
 				auto hsv = m_colorpicker->GetHSVColor();
 				hsv.hue = (_m_ushort)_wtoi(edit->GetCurText().c_str());
 				m_colorpicker->SetHSVColor(hsv);
-				m_content->Child<UISlider>(L"colorpicker_hbar")->SetCurValue(hsv.hue);
-				m_content->Child<UIEditBox>(L"colorpicker_h")->SetCurText(std::to_wstring(hsv.hue));
+				m_page->Child<UISlider>(L"colorpicker_hbar")->SetCurValue(hsv.hue);
+				m_page->Child<UIEditBox>(L"colorpicker_h")->SetCurText(std::to_wstring(hsv.hue));
 				updateRGB(m_colorpicker->GetRGBAColor());
 			}
 			else if (_MNAME(L"colorpicker_s"))
@@ -267,6 +268,23 @@ namespace MDWMBlurGlass
 				auto color = m_colorpicker->GetRGBAColor();
 				updateRGB(color);
 				updateDisplay(color);
+			}
+			else if(_MNAME(L"colorpicker_hex"))
+			{
+				auto edit = (UIEditBox*)control;
+				auto src = edit->GetCurText();
+				std::ranges::transform(src, src.begin(), ::toupper);
+				auto format = hexFormat(src);
+
+				edit->SetCurText(format);
+				_m_color color(format, true, m_alpha);
+
+				m_alphav->SetCurValue(Color::M_GetAValue(color));
+				int avalue = int(round((float)m_alphav->GetCurValue() / 255.f * 100.f));
+				m_alphaper->SetAttribute(L"text", std::to_wstring(avalue) + L"%", false);
+				updateRGB(color);
+				updateDisplay(color);
+				m_colorpicker->SetRGBAColor(color);
 			}
 			else
 				ret = false;
@@ -296,25 +314,23 @@ namespace MDWMBlurGlass
 
 	void ColorPickerDlg::ShowColorPicker(_m_color showColor, bool alpha, std::function<void(bool, _m_color)> callback)
 	{
-		if (m_dlgShow)
-			return;
-
 		if (alpha)
 		{
-			m_content->SetSize(453, 367, false);
-			m_content->Child(L"colorpicker_ablock")->SetVisible(true, false);
+			m_page->Child(L"content")->SetSize(453, 367, true);
+			m_page->Child(L"colorpicker_ablock")->SetVisible(true, false);
 			m_alphav->SetCurValue(Color::M_GetAValue(showColor));
 			updateAlpha(m_alphav->GetCurValue());
 		}
 		else
 		{
-			m_content->SetSize(453, 342, false);
-			m_content->Child(L"colorpicker_ablock")->SetVisible(false, false);
+			m_page->Child(L"content")->SetSize(453, 342, true);
+			m_page->Child(L"colorpicker_ablock")->SetVisible(false, false);
 			m_alphav->SetCurValue(255);
 		}
 
-		m_dlgShow = true;
 		m_alpha = alpha;
+
+		m_page->Child<UIEditBox>(L"colorpicker_hex")->SetLimitText(m_alpha ? 8 : 6);
 
 		m_callback = std::move(callback);
 
@@ -327,23 +343,15 @@ namespace MDWMBlurGlass
 		bgColor.FrameColor = Color::M_RGBA(83, 83, 83, 255);
 		bgColor.FrameWidth = 1;
 		bgColor.bkgndColor = showColor;
-		m_content->Child(L"colorpicker_cur")->SetBackground(bgColor);
+		m_page->Child(L"colorpicker_cur")->SetBackground(bgColor);
 
 		Show(true);
 	}
 
 	void ColorPickerDlg::Show(bool show, bool isok)
 	{
-		if (m_isani)
-			return;
-
-		if (show)
-		{
-			ScaleContent(1.5f);
-			m_page->SetAlpha(0, false);
-			m_page->SetVisible(true);
-		}
-		else if (m_callback)
+		m_page->SetVisible(show);
+		if (m_callback)
 		{
 			using namespace Color;
 			_m_color color = m_colorpicker->GetRGBAColor();
@@ -352,32 +360,5 @@ namespace MDWMBlurGlass
 					(_m_byte)m_alphav->GetCurValue());
 			m_callback(isok, color);
 		}
-
-		//动画过程
-		auto aniProc = [this, show](const MAnimation::MathsCalc* calc, float percent)
-		{
-			int alpha = calc->calc(show ? MAnimation::Default : MAnimation::Exponential_Out, show ? 0 : 255, show ? 255 : 0);
-			float scale = calc->calc(show ? MAnimation::Quartic_Out : MAnimation::Exponential_Out, show ? 1.5f : 1.f, show ? 1.f : 1.5f);
-
-			ScaleContent(scale);
-			m_page->SetAlpha((_m_byte)alpha);
-
-			if (percent == 100.f)
-			{
-				m_isani = false;
-				m_content->SetAnimationState(false);
-				if (!show)
-				{
-					m_page->SetVisible(false);
-					ScaleContent(1.f);
-					m_dlgShow = false;
-				}
-			}
-			return true;
-		};
-
-		m_isani = true;
-		m_content->SetAnimationState(true);
-		m_ani->CreateTask(aniProc, 300);
 	}
 }

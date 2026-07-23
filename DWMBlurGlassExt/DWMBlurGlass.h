@@ -16,13 +16,14 @@
  * If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 */
 #pragma once
-#include "DWMBlurGlass.h"
+#include "Common/CommonDef.h"
 
 namespace MDWMBlurGlassExt
 {
 	bool Startup();
 	void Shutdown();
-	void Refresh();
+	void Refresh(bool reload = true);
+	void RefreshAccentColor(COLORREF color);
 
 	void CreateNotifyThread();
 	void CloseNotifyThread();

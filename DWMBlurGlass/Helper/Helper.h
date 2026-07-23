@@ -26,17 +26,13 @@ namespace MDWMBlurGlass
 
 	extern std::wstring ReadFileSting(std::wstring_view filePath);
 
-	extern std::wstring GetSystemLocalName();
-
-	extern BOOL EnableHostBackdropBrush(HWND hWnd);
+	extern std::pair<std::wstring, std::wstring> GetSystemLocaleAndParent();
 
 	extern bool InstallScheduledTasks(std::wstring& errinfo);
 
 	extern bool IsInstallTasks();
 
 	extern bool DeleteScheduledTasks(std::wstring& errinfo);
-
-	extern bool SetIniString(std::wstring_view path, std::wstring_view appName, std::wstring_view keyName, std::wstring_view value);
 
 	extern bool BrowseForFile(bool isOpen, bool multiple, const std::vector<COMDLG_FILTERSPEC>& filter,
 		HWND parentWnd, std::vector<std::wstring>& selectedFiles, std::wstring_view defExtName = L"");

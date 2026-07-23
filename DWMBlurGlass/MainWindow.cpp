@@ -38,28 +38,35 @@ namespace MDWMBlurGlass
 		if (!LoadDefualtUIStyle(ui))
 			return false;
 
-		if(!LoadLanguageString(ui, GetSystemLocalName(), true))
+		auto [locale, parentLocale] = GetSystemLocaleAndParent();
+		if (!LoadLanguageString(ui, locale, true))
 		{
-			if (!LoadLanguageString(ui, L"en-US", true))
-				return false;
+			if (!LoadLanguageString(ui, parentLocale, true))
+			{
+				if (!LoadLanguageString(ui, L"en-US", true))
+					return false;
+			}
+		}
+		else if (locale != L"en-US")
+		{
+			LoadLanguageString(ui, L"en-US", true, false);
 		}
 
 		const HWND hWnd = (HWND)ctx->Base()->GetWindowHandle();
-		SetWindowLongW(hWnd, GWL_STYLE, GetWindowLongW(hWnd, GWL_STYLE) & ~(WS_MAXIMIZEBOX | WS_SIZEBOX));
+		//SetWindowLongW(hWnd, GWL_STYLE, GetWindowLongW(hWnd, GWL_STYLE) & ~(WS_MAXIMIZEBOX | WS_SIZEBOX));
 		HICON hIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCE(IDI_ICON1));
 		SendMessageW(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 		SendMessageW(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 
-		EnableHostBackdropBrush(hWnd);
-
 		UIBkgndStyle bgStyle;
-		bgStyle.bkgndColor = Color::M_RGBA(255, 255, 255, 200);
+		bgStyle.bkgndColor = Color::M_RGBA(245, 241, 249, 255);
 		root->SetBackground(bgStyle);
 
 		try
 		{
 			g_mainPage = new MainWindowPage(root, ui);
 			g_colorDialog = new ColorPickerDlg(root, ui);
+			g_mainPage->CreateTitleBar(ui);
 		}
 		catch(...)
 		{
@@ -80,7 +87,14 @@ namespace MDWMBlurGlass
 			g_colorDialog->ShowColorPicker(showColor, alpha, std::move(callback));
 	}
 
-	bool MainWindow_EventProc(MWindowCtx*, UINotifyEvent event, UIControl* control, _m_param param)
+	_m_result MainWindow_SrcEventProc(MWindowCtx* ctx, const MWndDefEventSource& defcallback, MEventCodeEnum code, _m_param param)
+	{
+		if (g_mainPage && g_mainPage->SrcEventProc(ctx, defcallback, code, param))
+			return 0;
+		return defcallback(code, param);
+	}
+
+	_m_result MainWindow_EventProc(MWindowCtx*, UINotifyEvent event, UIControl* control, _m_param param)
 	{
 		if (g_colorDialog && g_colorDialog->EventProc(event, control, param))
 			return true;

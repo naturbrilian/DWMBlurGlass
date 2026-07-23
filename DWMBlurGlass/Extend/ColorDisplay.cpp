@@ -29,20 +29,13 @@ namespace Mui
 		{
 			return new ColorDisplay(parent);
 		};
-		M_REGISTER_CTRL(method);
+		MCTRL_REGISTER(method);
 	}
 
 	ColorDisplay::ColorDisplay(UIControl* parent)
 	{
 		m_cacheSupport = true;
 		parent->AddChildren(this);
-	}
-
-	ColorDisplay::~ColorDisplay()
-	{
-		MSafeRelease(font);
-		MSafeRelease(pen);
-		MSafeRelease(brush);
 	}
 
 	void ColorDisplay::SetAttribute(std::wstring_view attribName, std::wstring_view attrib, bool draw)
@@ -58,8 +51,7 @@ namespace Mui
 		else if (attribName == L"fontStyle")
 		{
 			fontStyle = *(UILabel::Attribute*)M_StoULong64(attrib);
-			MSafeRelease(font);
-			font = m_render->CreateFonts(L"", fontStyle.font, fontStyle.fontSize, fontStyle.fontCustom);
+			font = m_render->CreateFonts(L"", fontStyle.font.view(), fontStyle.fontSize, fontStyle.fontCustom);
 		}
 		else if (attribName == L"text")
 			fontStyle.text = attrib;
@@ -124,7 +116,7 @@ namespace Mui
 		colorRc.left = colorRc.right + offset;
 		colorRc.right = param->destRect->right;
 
-		brush->SetColor(M_Black);
+		brush->SetColor(IsEnabled() ? M_Black : M_RGBA(130, 130, 130, 255));
 
 		std::wstring colorstr = showalpha ? L"RGBA(" : L"RGB(";
 		colorstr += std::to_wstring(M_GetRValue(curColor)) + L"," + std::to_wstring(M_GetGValue(curColor))
@@ -144,7 +136,7 @@ namespace Mui
 
 		if (auto title = font->GetText(); !title.empty())
 		{
-			font->SetText(fontStyle.text);
+			font->SetText(fontStyle.text.view());
 			brush->SetColor(fontStyle.fontColor);
 
 			font->SetFontSize(_scale_to(14, scale.cx), std::make_pair(0u, (_m_uint)font->GetText().length()));
@@ -156,14 +148,10 @@ namespace Mui
 	{
 		UINodeBase::OnLoadResource(render, recreate);
 
-		MSafeRelease(font);
-		MSafeRelease(pen);
-		MSafeRelease(brush);
-
 		auto scale = GetRectScale().scale();
 		const float fontSize = M_MIN(scale.cx, scale.cy) * (float)fontStyle.fontSize;
 
-		font = render->CreateFonts(L"", fontStyle.font, (_m_uint)fontSize, fontStyle.fontCustom);
+		font = render->CreateFonts(L"", fontStyle.font.view(), (_m_uint)fontSize, fontStyle.fontCustom);
 		brush = render->CreateBrush(fontStyle.fontColor);
 		pen = render->CreatePen(1, normalColor);
 	}

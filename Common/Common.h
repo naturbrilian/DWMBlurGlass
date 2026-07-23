@@ -24,30 +24,93 @@ namespace MDWMBlurGlass
 {
 	extern const HINSTANCE this_inst;
 
+	enum class blurMethod
+	{
+		CustomBlur,
+		AccentBlur,
+		DWMAPIBlur
+	};
+
+	enum class effectType
+	{
+		None = -1,
+		Blur,
+		Aero,
+		Acrylic,
+		Mica
+	};
+
 	struct ConfigData
 	{
 		bool applyglobal = false;
 		bool extendBorder = false;
 		bool reflection = false;
 		bool oldBtnHeight = false;
+		bool customAmount = false;
+		bool useAccentColor = false;
+		bool crossFade = true;
+
+		bool overrideAccent = false;
+		bool powerSavingMode = false;
+		bool disableOnBattery = true;
+
+		bool scaleOptimizer = false;
+		bool titlebtnGlow = false;
+
+		bool disableFramerateLimit = false;
+
+		//Options without GUI
 		int extendRound = 10;
+		int titlebtnOffsetX = -1;
+		//
+
 		float blurAmount = 20.f;
+		float customBlurAmount = 20.f;
+		float luminosityOpacity = 0.65f;
+		float glassIntensity = 1.f;
+
+		UINT crossfadeTime = 160;
+
+		// these settings are optimal for the default Sky color from Windows 7
+		// newly added params since 2.1.0
+		float aeroColorBalance = 0.08f;
+		float aeroAfterglowBalance = 0.43f;
+		float aeroBlurBalance = 0.49f;
+
 		COLORREF activeTextColor = 0xFF000000;
 		COLORREF inactiveTextColor = 0xFFB4B4B4;
 		COLORREF activeBlendColor = 0x64FFFFFF;
 		COLORREF inactiveBlendColor = 0x64FFFFFF;
+
+		COLORREF activeTextColorDark = 0xFFFFFFFF;
+		COLORREF inactiveTextColorDark = 0xFFB4B4B4;
+		COLORREF activeBlendColorDark = 0x64000000;
+		COLORREF inactiveBlendColorDark = 0x64000000;
+
+
+		blurMethod blurmethod = blurMethod::CustomBlur;
+		effectType effectType = effectType::Blur;
 
 		bool isDefault()
 		{
 			static ConfigData _default;
 			return memcmp(this, &_default, sizeof ConfigData) == 0;
 		}
+
+		static ConfigData LoadFromFile(std::wstring_view path);
+		static void SaveToFile(std::wstring_view path, const ConfigData& cfg);
 	};
 
 	enum class MHostNotifyType
 	{
 		Refresh,
-		Shutdown
+		Shutdown,
+		EnableTransparency
+	};
+	enum class MClientNotifyType
+	{
+		Shutdown = 1,
+		QueryTransparency
 	};
 
 	enum MHostModuleType
@@ -57,6 +120,7 @@ namespace MDWMBlurGlass
 	};
 
 	auto constexpr DWMBlurGlassNotifyClassName = L"MDWMBlurGlassExtNotify";
+	auto constexpr DWMBlurGlassHostNotifyClassName = L"MDWMBlurGlassHostNotify";
 
 	namespace RAIIHelper
 	{
@@ -121,5 +185,7 @@ namespace MDWMBlurGlass
 	{
 		extern std::wstring GetCurrentDir();
 		extern std::wstring GetIniString(std::wstring_view path, std::wstring_view appName, std::wstring_view keyName);
+		extern bool SetIniString(std::wstring_view path, std::wstring_view appName, std::wstring_view keyName, std::wstring_view value);
+		extern bool IsAppUseLightMode();
 	}
 }
